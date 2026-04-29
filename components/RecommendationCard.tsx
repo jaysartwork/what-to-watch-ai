@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import type { Movie } from '@/types'
 
 interface Props {
@@ -33,6 +32,7 @@ export default function RecommendationCard({ movie, rank }: Props) {
 
       {/* Body */}
       <div className="flex-1 min-w-0">
+
         {/* Rank + Title + Score */}
         <div className="flex items-start justify-between gap-2 mb-1">
           <div className="flex items-center gap-2">
@@ -56,8 +56,8 @@ export default function RecommendationCard({ movie, rank }: Props) {
           {movie.desc}
         </p>
 
-        {/* Category tag */}
-        <div className="flex flex-wrap gap-1.5 mb-1.5">
+        {/* Category + Tags */}
+        <div className="flex flex-wrap gap-1.5 mb-2">
           <span className="text-[11px] px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 font-medium tracking-wide uppercase">
             {movie.category}
           </span>
@@ -67,6 +67,35 @@ export default function RecommendationCard({ movie, rank }: Props) {
             </span>
           ))}
         </div>
+
+        {/* ── STREAMING PROVIDERS (BAGO) ── */}
+        {movie.streamingOn && movie.streamingOn.length > 0 && (
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[11px] text-zinc-400 dark:text-zinc-500">Available on</span>
+            <div className="flex items-center gap-1.5">
+              {movie.streamingOn.map((provider) => (
+                <img
+                  key={provider.name}
+                  src={provider.logoUrl}
+                  alt={provider.name}
+                  title={provider.name}
+                  width={20}
+                  height={20}
+                  className="w-5 h-5 rounded-md object-cover"
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* No streaming info fallback */}
+        {(!movie.streamingOn || movie.streamingOn.length === 0) && (
+          <div className="mb-2">
+            <span className="text-[11px] text-zinc-400 dark:text-zinc-500 italic">
+              Streaming info unavailable
+            </span>
+          </div>
+        )}
 
         {/* Reason */}
         <p className="text-[12px] text-zinc-400 dark:text-zinc-500 italic">{movie.reason}</p>

@@ -8,6 +8,11 @@ export type Category =
   | 'scifi'
   | 'animation'
 
+export interface StreamingProvider {
+  name: string
+  logoUrl: string
+}
+
 export interface Movie {
   title: string
   score: number
@@ -19,6 +24,7 @@ export interface Movie {
   posterUrl?: string
   year?: number
   tmdbId?: number
+  streamingOn?: StreamingProvider[]   // ← BAGO
 }
 
 export interface RecommendRequest {

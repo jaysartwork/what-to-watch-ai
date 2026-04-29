@@ -1,15 +1,15 @@
-import type { Category, Movie, RecommendResponse } from '@/types'
+import type { Category, Movie, RecommendResponse, StreamingProvider } from '@/types'
 
 // ── TMDB Genre IDs ────────────────────────────────────────────
 const GENRE_MAP: Record<Category, number[]> = {
-  romantic:  [10749],           // Romance
-  thriller:  [53, 9648],        // Thriller, Mystery
-  funny:     [35],              // Comedy
-  action:    [28, 12],          // Action, Adventure
-  horror:    [27],              // Horror
-  drama:     [18],              // Drama
-  scifi:     [878, 14],         // Sci-Fi, Fantasy
-  animation: [16],              // Animation
+  romantic:  [10749],
+  thriller:  [53, 9648],
+  funny:     [35],
+  action:    [28, 12],
+  horror:    [27],
+  drama:     [18],
+  scifi:     [878, 14],
+  animation: [16],
 }
 
 // ── Keyword fallback ──────────────────────────────────────────
@@ -71,16 +71,42 @@ export async function detectCategoriesWithAI(mood: string): Promise<Category[]> 
   }
 }
 
+// ── TMDB: Fetch streaming providers for a movie ───────────────
+async function fetchStreamingProviders(tmdbId: number, token: string): Promise<StreamingProvider[]> {
+  try {
+    // PH = Philippines, fallback to US if PH not available
+    const res = await fetch(
+      `https://api.themoviedb.org/3/movie/${tmdbId}/watch/providers`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    )
+    const data = await res.json()
+
+    // Try PH first, fallback to US
+    const regionData = data.results?.PH ?? data.results?.US ?? null
+    if (!regionData?.flatrate) return []
+
+    // Only show top 4 streaming platforms
+    return regionData.flatrate.slice(0, 4).map((p: any): StreamingProvider => ({
+      name: p.provider_name,
+      logoUrl: `https://image.tmdb.org/t/p/original${p.logo_path}`,
+    }))
+  } catch {
+    return []
+  }
+}
+
 // ── TMDB fetch ────────────────────────────────────────────────
 async function fetchFromTMDB(categories: Category[], timeLimit: number): Promise<Movie[]> {
   const token = process.env.TMDB_API_TOKEN
   if (!token) throw new Error('No TMDB token')
 
-  // Collect all genre IDs from detected categories
   const genreIds = [...new Set(categories.flatMap((c) => GENRE_MAP[c]))]
   const genreParam = genreIds.join(',')
-
-  // Random page 1-5 for variety
   const page = Math.floor(Math.random() * 5) + 1
 
   const url = new URL('https://api.themoviedb.org/3/discover/movie')
@@ -90,7 +116,6 @@ async function fetchFromTMDB(categories: Category[], timeLimit: number): Promise
   url.searchParams.set('page', String(page))
   url.searchParams.set('language', 'en-US')
 
- 
   const res = await fetch(url.toString(), {
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -100,24 +125,34 @@ async function fetchFromTMDB(categories: Category[], timeLimit: number): Promise
 
   const data = await res.json()
   const results = data.results ?? []
-
-  // Shuffle for variety
   const shuffled = results.sort(() => Math.random() - 0.5).slice(0, 8)
 
-  return shuffled.map((m: any): Movie => ({
-    title:     m.title,
-    score:     Math.round(m.vote_average * 10) / 10,
-    desc:      m.overview || 'No description available.',
-    duration:  m.runtime ?? 120,
-    tags:      [],
-    reason:    `Highly rated ${categories[0]} pick with ${m.vote_count?.toLocaleString()} votes.`,
-    category:  categories[0],
-    posterUrl: m.poster_path
-      ? `https://image.tmdb.org/t/p/w300${m.poster_path}`
-      : undefined,
-    year:      m.release_date ? parseInt(m.release_date.slice(0, 4)) : undefined,
-    tmdbId:    m.id,
-  }))
+  // Fetch streaming providers for all movies in parallel
+  const movies = await Promise.all(
+    shuffled.map(async (m: any): Promise<Movie> => {
+      const streamingOn = m.id
+        ? await fetchStreamingProviders(m.id, token)
+        : []
+
+      return {
+        title:      m.title,
+        score:      Math.round(m.vote_average * 10) / 10,
+        desc:       m.overview || 'No description available.',
+        duration:   m.runtime ?? 120,
+        tags:       [],
+        reason:     `Highly rated ${categories[0]} pick with ${m.vote_count?.toLocaleString()} votes.`,
+        category:   categories[0],
+        posterUrl:  m.poster_path
+          ? `https://image.tmdb.org/t/p/w300${m.poster_path}`
+          : undefined,
+        year:       m.release_date ? parseInt(m.release_date.slice(0, 4)) : undefined,
+        tmdbId:     m.id,
+        streamingOn,  // ← BAGO
+      }
+    })
+  )
+
+  return movies
 }
 
 // ── Main recommendation function ──────────────────────────────

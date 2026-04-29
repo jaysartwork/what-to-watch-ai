@@ -91,11 +91,7 @@ async function fetchFromTMDB(categories: Category[], timeLimit: number): Promise
   url.searchParams.set('page', String(page))
   url.searchParams.set('language', 'en-US')
 
-  // Time filter
-  if (timeLimit !== 999) {
-    url.searchParams.set('with_runtime.lte', String(timeLimit + 30))
-  }
-
+ 
   const res = await fetch(url.toString(), {
     headers: {
       'Authorization': `Bearer ${token}`,

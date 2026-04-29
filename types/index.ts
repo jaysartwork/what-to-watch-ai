@@ -12,15 +12,18 @@ export interface Movie {
   title: string
   score: number
   desc: string
-  duration: number // in minutes
+  duration: number
   tags: string[]
   reason: string
   category: Category
+  posterUrl?: string
+  year?: number
+  tmdbId?: number
 }
 
 export interface RecommendRequest {
   mood: string
-  timeLimit: number // in minutes — 999 = no limit
+  timeLimit: number
   sessionId: string
 }
 
@@ -30,7 +33,6 @@ export interface RecommendResponse {
   totalMatches: number
 }
 
-// Supabase DB row types
 export interface SearchLog {
   id: string
   created_at: string

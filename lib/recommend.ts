@@ -1,7 +1,18 @@
 import type { Category, Movie, RecommendResponse } from '@/types'
-import { CATALOG } from '@/data/catalog'
 
-// ── Keyword fallback (used if Groq fails) ────────────────────
+// ── TMDB Genre IDs ────────────────────────────────────────────
+const GENRE_MAP: Record<Category, number[]> = {
+  romantic:  [10749],           // Romance
+  thriller:  [53, 9648],        // Thriller, Mystery
+  funny:     [35],              // Comedy
+  action:    [28, 12],          // Action, Adventure
+  horror:    [27],              // Horror
+  drama:     [18],              // Drama
+  scifi:     [878, 14],         // Sci-Fi, Fantasy
+  animation: [16],              // Animation
+}
+
+// ── Keyword fallback ──────────────────────────────────────────
 export const KEYWORD_MAP: Record<Category, string[]> = {
   romantic:  ['romantic','romance','love','sweet','cute','heartwarming','relationship','couple','date','wedding','cheesy','soft','cozy','mushy'],
   thriller:  ['thriller','mystery','suspense','twist','dark','crime','investigation','murder','detective','plot','intense','edge','seat','mind'],
@@ -25,12 +36,7 @@ export function detectCategoriesFallback(mood: string): Category[] {
 // ── Groq AI mood detection ────────────────────────────────────
 export async function detectCategoriesWithAI(mood: string): Promise<Category[]> {
   const apiKey = process.env.GROQ_API_KEY
-  console.log('[Groq] API key present:', !!apiKey)
-
-  if (!apiKey) {
-    console.warn('[Groq] No API key — using keyword fallback')
-    return detectCategoriesFallback(mood)
-  }
+  if (!apiKey) return detectCategoriesFallback(mood)
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -48,35 +54,75 @@ export async function detectCategoriesWithAI(mood: string): Promise<Category[]> 
             role: 'system',
             content: `You are a movie recommendation classifier. Given a user's mood or request, return ONLY a JSON array of matching categories from this list: romantic, thriller, funny, action, horror, drama, scifi, animation. Return 1-3 categories maximum. Return ONLY the JSON array, nothing else. Example: ["romantic","funny"]`,
           },
-          {
-            role: 'user',
-            content: mood,
-          },
+          { role: 'user', content: mood },
         ],
       }),
     })
 
     const data = await res.json()
-    console.log('[Groq] full response:', JSON.stringify(data))
-
-    const raw = data.choices?.[0]?.message?.content?.trim() ?? '[]'
-    console.log('[Groq] raw content:', raw)
-
-    // Strip markdown code fences if present
+    const raw  = data.choices?.[0]?.message?.content?.trim() ?? '[]'
     const text = raw.replace(/```json|```/g, '').trim()
     const parsed = JSON.parse(text) as Category[]
-    console.log('[Groq] parsed:', parsed)
-
-    // Validate — only return known categories
     const valid: Category[] = ['romantic','thriller','funny','action','horror','drama','scifi','animation']
-    const result = parsed.filter((c) => valid.includes(c))
-    console.log('[Groq] final result:', result)
-    return result
-
+    return parsed.filter((c) => valid.includes(c))
   } catch (err) {
     console.error('[detectCategoriesWithAI] Groq error, falling back:', err)
     return detectCategoriesFallback(mood)
   }
+}
+
+// ── TMDB fetch ────────────────────────────────────────────────
+async function fetchFromTMDB(categories: Category[], timeLimit: number): Promise<Movie[]> {
+  const token = process.env.TMDB_API_TOKEN
+  if (!token) throw new Error('No TMDB token')
+
+  // Collect all genre IDs from detected categories
+  const genreIds = [...new Set(categories.flatMap((c) => GENRE_MAP[c]))]
+  const genreParam = genreIds.join(',')
+
+  // Random page 1-5 for variety
+  const page = Math.floor(Math.random() * 5) + 1
+
+  const url = new URL('https://api.themoviedb.org/3/discover/movie')
+  url.searchParams.set('with_genres', genreParam)
+  url.searchParams.set('sort_by', 'popularity.desc')
+  url.searchParams.set('vote_count.gte', '100')
+  url.searchParams.set('vote_average.gte', '6')
+  url.searchParams.set('page', String(page))
+  url.searchParams.set('language', 'en-US')
+
+  // Time filter
+  if (timeLimit !== 999) {
+    url.searchParams.set('with_runtime.lte', String(timeLimit + 30))
+  }
+
+  const res = await fetch(url.toString(), {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  })
+
+  const data = await res.json()
+  const results = data.results ?? []
+
+  // Shuffle for variety
+  const shuffled = results.sort(() => Math.random() - 0.5).slice(0, 8)
+
+  return shuffled.map((m: any): Movie => ({
+    title:     m.title,
+    score:     Math.round(m.vote_average * 10) / 10,
+    desc:      m.overview || 'No description available.',
+    duration:  m.runtime ?? 120,
+    tags:      [],
+    reason:    `Highly rated ${categories[0]} pick with ${m.vote_count?.toLocaleString()} votes.`,
+    category:  categories[0],
+    posterUrl: m.poster_path
+      ? `https://image.tmdb.org/t/p/w300${m.poster_path}`
+      : undefined,
+    year:      m.release_date ? parseInt(m.release_date.slice(0, 4)) : undefined,
+    tmdbId:    m.id,
+  }))
 }
 
 // ── Main recommendation function ──────────────────────────────
@@ -87,23 +133,15 @@ export async function getRecommendations(mood: string, timeLimit: number): Promi
     return { results: [], detectedCategories: [], totalMatches: 0 }
   }
 
-  const seen = new Set<string>()
-  const pool: Movie[] = []
-
-  for (const cat of detectedCategories) {
-    for (const movie of CATALOG) {
-      if (movie.category === cat && !seen.has(movie.title)) {
-        seen.add(movie.title)
-        pool.push(movie)
-      }
+  try {
+    const results = await fetchFromTMDB(detectedCategories, timeLimit)
+    return {
+      results: results.slice(0, 4),
+      detectedCategories,
+      totalMatches: results.length,
     }
+  } catch (err) {
+    console.error('[getRecommendations] TMDB failed:', err)
+    return { results: [], detectedCategories, totalMatches: 0 }
   }
-
-  const maxDur = timeLimit === 999 ? Infinity : timeLimit + 30
-  let filtered = pool.filter((m) => m.duration <= maxDur)
-  if (filtered.length === 0) filtered = pool
-
-  const results = [...filtered].sort((a, b) => b.score - a.score).slice(0, 4)
-
-  return { results, detectedCategories, totalMatches: pool.length }
 }

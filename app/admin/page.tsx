@@ -1,17 +1,9 @@
 // app/admin/page.tsx
-// ─────────────────────────────────────────────────────
-// Simple analytics dashboard — shows you exactly who is
-// using your SaaS, when, and what they searched for.
-//
-// Protected via ADMIN_SECRET env var.
-// Access at: /admin?key=your-secret
-// Set in .env.local: ADMIN_SECRET=your-secret
-// ─────────────────────────────────────────────────────
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase'
 import type { SearchLog } from '@/types'
 
-// ── Types ────────────────────────────────────────────
 interface Stats {
   totalSearches:  number
   todaySearches:  number
@@ -22,7 +14,6 @@ interface Stats {
   error?:         string
 }
 
-// ── Data Fetching ─────────────────────────────────────
 async function getStats(): Promise<Stats> {
   const empty: Stats = {
     totalSearches: 0, todaySearches: 0,
@@ -56,14 +47,12 @@ async function getStats(): Promise<Stats> {
       db.from('searches').select('categories_detected'),
     ])
 
-    // Surface the first DB error if any
     const dbError = e1 ?? e2 ?? e3 ?? e4 ?? e5 ?? e6
     if (dbError) {
       console.error('[admin] Supabase error:', dbError.message)
       return { ...empty, error: dbError.message }
     }
 
-    // Count category frequency
     const catCount: Record<string, number> = {}
     for (const row of categoryRows ?? []) {
       for (const cat of row.categories_detected ?? []) {
@@ -91,19 +80,16 @@ async function getStats(): Promise<Stats> {
   }
 }
 
-// ── Page ──────────────────────────────────────────────
 export default async function AdminPage({
   searchParams,
 }: {
   searchParams: { key?: string }
 }) {
-  // Route protection — check ADMIN_SECRET env var
   const secret = process.env.ADMIN_SECRET
-  if (!secret || searchParams.key !== secret) {
-    notFound()  // returns 404 — doesn't reveal that a route exists
-  }
+  if (!secret || searchParams.key !== secret) notFound()
 
   const stats = await getStats()
+  const key = searchParams.key
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white p-8">
@@ -123,10 +109,6 @@ export default async function AdminPage({
           <div className="mb-8 bg-red-950/50 border border-red-800 rounded-2xl px-5 py-4">
             <p className="text-red-400 text-sm font-medium mb-1">⚠ Database connection error</p>
             <p className="text-red-500 text-xs font-mono">{stats.error}</p>
-            <p className="text-red-600 text-xs mt-2">
-              Check that your <span className="font-mono">SUPABASE_SERVICE_ROLE_KEY</span> is set in{' '}
-              <span className="font-mono">.env.local</span> and that the migration has been run.
-            </p>
           </div>
         )}
 
@@ -209,8 +191,14 @@ export default async function AdminPage({
                         </div>
                       </td>
                       <td className="py-2.5 pr-4 text-zinc-400">{s.results_count}</td>
-                      <td className="py-2.5 text-zinc-600 font-mono text-[11px]">
-                        {s.session_id?.slice(0, 8)}…
+                      <td className="py-2.5">
+                        {/* ← Clickable session ID */}
+                        <Link
+                          href={`/admin/session/${s.session_id}?key=${key}`}
+                          className="text-zinc-500 font-mono text-[11px] hover:text-amber-400 transition-colors underline underline-offset-2"
+                        >
+                          {s.session_id?.slice(0, 8)}…
+                        </Link>
                       </td>
                     </tr>
                   ))}

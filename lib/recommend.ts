@@ -87,7 +87,6 @@ async function fetchFromTMDB(categories: Category[], timeLimit: number): Promise
   url.searchParams.set('with_genres', genreParam)
   url.searchParams.set('sort_by', 'popularity.desc')
   url.searchParams.set('vote_count.gte', '100')
-  url.searchParams.set('vote_average.gte', '6')
   url.searchParams.set('page', String(page))
   url.searchParams.set('language', 'en-US')
 

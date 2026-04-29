@@ -22,9 +22,12 @@ export default function AdminPage() {
   const [confirm, setConfirm]   = useState<'searches' | 'all' | null>(null)
 
   // Get key from URL
-  const key = typeof window !== 'undefined'
-    ? new URLSearchParams(window.location.search).get('key') ?? ''
-    : ''
+  const [key, setKey] = useState('')
+
+useEffect(() => {
+  const k = new URLSearchParams(window.location.search).get('key') ?? ''
+  setKey(k)
+}, [])
 
   async function fetchStats() {
   setLoading(true)
@@ -57,7 +60,9 @@ export default function AdminPage() {
     setClearing(false)
   }
 
-  useEffect(() => { fetchStats() }, [])
+  useEffect(() => {
+  if (key) fetchStats()
+}, [key])
 
   if (loading) return (
     <main className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">

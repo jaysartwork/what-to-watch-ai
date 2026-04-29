@@ -1,7 +1,8 @@
 // app/admin/page.tsx
-import { notFound } from 'next/navigation'
+'use client'
+
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { createServerClient } from '@/lib/supabase'
 import type { SearchLog } from '@/types'
 
 interface Stats {
@@ -14,94 +15,99 @@ interface Stats {
   error?:         string
 }
 
-async function getStats(): Promise<Stats> {
-  const empty: Stats = {
-    totalSearches: 0, todaySearches: 0,
-    weekSearches: 0,  totalSessions: 0,
-    recentSearches: [], topCategories: [],
+export default function AdminPage() {
+  const [stats, setStats]       = useState<Stats | null>(null)
+  const [loading, setLoading]   = useState(true)
+  const [clearing, setClearing] = useState(false)
+  const [confirm, setConfirm]   = useState<'searches' | 'all' | null>(null)
+
+  // Get key from URL
+  const key = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('key') ?? ''
+    : ''
+
+  async function fetchStats() {
+    setLoading(true)
+    const res = await fetch(`/api/admin/stats?key=${key}`)
+    const data = await res.json()
+    setStats(data)
+    setLoading(false)
   }
 
-  try {
-    const db = createServerClient()
-
-    const now        = new Date()
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
-    const weekStart  = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
-
-    const [
-      { count: totalSearches,  error: e1 },
-      { count: todaySearches,  error: e2 },
-      { count: weekSearches,   error: e3 },
-      { count: totalSessions,  error: e4 },
-      { data:  recentSearches, error: e5 },
-      { data:  categoryRows,   error: e6 },
-    ] = await Promise.all([
-      db.from('searches').select('*', { count: 'exact', head: true }),
-      db.from('searches').select('*', { count: 'exact', head: true }).gte('created_at', todayStart),
-      db.from('searches').select('*', { count: 'exact', head: true }).gte('created_at', weekStart),
-      db.from('sessions').select('*', { count: 'exact', head: true }),
-      db.from('searches')
-        .select('id, mood_input, categories_detected, results_count, created_at, session_id')
-        .order('created_at', { ascending: false })
-        .limit(20),
-      db.from('searches').select('categories_detected'),
-    ])
-
-    const dbError = e1 ?? e2 ?? e3 ?? e4 ?? e5 ?? e6
-    if (dbError) {
-      console.error('[admin] Supabase error:', dbError.message)
-      return { ...empty, error: dbError.message }
-    }
-
-    const catCount: Record<string, number> = {}
-    for (const row of categoryRows ?? []) {
-      for (const cat of row.categories_detected ?? []) {
-        catCount[cat] = (catCount[cat] ?? 0) + 1
-      }
-    }
-    const topCategories = Object.entries(catCount)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 6)
-
-    return {
-      totalSearches:  totalSearches  ?? 0,
-      todaySearches:  todaySearches  ?? 0,
-      weekSearches:   weekSearches   ?? 0,
-      totalSessions:  totalSessions  ?? 0,
-      recentSearches: (recentSearches ?? []) as SearchLog[],
-      topCategories,
-    }
-  } catch (err) {
-    console.error('[admin] Unexpected error:', err)
-    return {
-      ...empty,
-      error: err instanceof Error ? err.message : 'Unknown error — check your env vars.',
-    }
+  async function clearData(target: 'searches' | 'all') {
+    setClearing(true)
+    await fetch('/api/admin/clear', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret: key, target }),
+    })
+    setConfirm(null)
+    await fetchStats()
+    setClearing(false)
   }
-}
 
-export default async function AdminPage({
-  searchParams,
-}: {
-  searchParams: { key?: string }
-}) {
-  const secret = process.env.ADMIN_SECRET
-  if (!secret || searchParams.key !== secret) notFound()
+  useEffect(() => { fetchStats() }, [])
 
-  const stats = await getStats()
-  const key = searchParams.key
+  if (loading) return (
+    <main className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
+      <div className="w-6 h-6 border-2 border-zinc-700 border-t-amber-500 rounded-full animate-spin" />
+    </main>
+  )
+
+  if (!stats) return null
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white p-8">
       <div className="max-w-4xl mx-auto">
 
         {/* Header */}
-        <div className="mb-10">
-          <p className="text-[11px] uppercase tracking-widest text-zinc-500 mb-1">What to Watch AI</p>
-          <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
-          <p className="text-zinc-400 text-sm mt-1">
-            Real-time usage data from your Supabase database.
-          </p>
+        <div className="flex items-start justify-between mb-10">
+          <div>
+            <p className="text-[11px] uppercase tracking-widest text-zinc-500 mb-1">What to Watch AI</p>
+            <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
+            <p className="text-zinc-400 text-sm mt-1">Real-time usage data from your Supabase database.</p>
+          </div>
+
+          {/* Clear buttons */}
+          <div className="flex flex-col gap-2 items-end">
+            {confirm === null ? (
+              <>
+                <button
+                  onClick={() => setConfirm('searches')}
+                  className="text-[12px] px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:border-red-700 hover:text-red-400 transition-colors"
+                >
+                  🗑 Clear searches
+                </button>
+                <button
+                  onClick={() => setConfirm('all')}
+                  className="text-[12px] px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:border-red-700 hover:text-red-400 transition-colors"
+                >
+                  🗑 Clear all data
+                </button>
+              </>
+            ) : (
+              <div className="bg-red-950/50 border border-red-800 rounded-xl p-3 text-right">
+                <p className="text-red-400 text-[12px] mb-2">
+                  {confirm === 'all' ? 'Delete ALL searches + sessions?' : 'Delete all searches?'}
+                </p>
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => setConfirm(null)}
+                    className="text-[12px] px-3 py-1 rounded-lg border border-zinc-700 text-zinc-400"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => clearData(confirm)}
+                    disabled={clearing}
+                    className="text-[12px] px-3 py-1 rounded-lg bg-red-700 hover:bg-red-600 text-white disabled:opacity-50"
+                  >
+                    {clearing ? 'Clearing...' : 'Yes, delete'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* DB Error Banner */}
@@ -140,10 +146,7 @@ export default async function AdminPage({
                 <div key={cat} className="flex items-center gap-3">
                   <span className="w-20 text-[13px] capitalize text-zinc-300">{cat}</span>
                   <div className="flex-1 bg-zinc-800 rounded-full h-2">
-                    <div
-                      className="bg-amber-500 h-2 rounded-full transition-all"
-                      style={{ width: `${pct}%` }}
-                    />
+                    <div className="bg-amber-500 h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
                   </div>
                   <span className="text-[13px] text-zinc-400 tabular-nums w-8 text-right">{count}</span>
                 </div>
@@ -152,7 +155,7 @@ export default async function AdminPage({
           </div>
         </div>
 
-        {/* Recent Searches Table */}
+        {/* Recent Searches */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
           <h2 className="font-semibold text-[15px] mb-4">Recent searches</h2>
           {stats.recentSearches.length === 0 ? (
@@ -178,21 +181,16 @@ export default async function AdminPage({
                           hour: '2-digit', minute: '2-digit',
                         })}
                       </td>
-                      <td className="py-2.5 pr-4 text-zinc-300 max-w-[200px] truncate">
-                        {s.mood_input}
-                      </td>
+                      <td className="py-2.5 pr-4 text-zinc-300 max-w-[200px] truncate">{s.mood_input}</td>
                       <td className="py-2.5 pr-4">
                         <div className="flex gap-1 flex-wrap">
                           {(s.categories_detected ?? []).map((c) => (
-                            <span key={c} className="px-1.5 py-0.5 bg-amber-500/10 text-amber-400 rounded text-[11px] capitalize">
-                              {c}
-                            </span>
+                            <span key={c} className="px-1.5 py-0.5 bg-amber-500/10 text-amber-400 rounded text-[11px] capitalize">{c}</span>
                           ))}
                         </div>
                       </td>
                       <td className="py-2.5 pr-4 text-zinc-400">{s.results_count}</td>
                       <td className="py-2.5">
-                        {/* ← Clickable session ID */}
                         <Link
                           href={`/admin/session/${s.session_id}?key=${key}`}
                           className="text-zinc-500 font-mono text-[11px] hover:text-amber-400 transition-colors underline underline-offset-2"

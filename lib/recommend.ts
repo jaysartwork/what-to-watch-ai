@@ -25,7 +25,12 @@ export function detectCategoriesFallback(mood: string): Category[] {
 // ── Groq AI mood detection ────────────────────────────────────
 export async function detectCategoriesWithAI(mood: string): Promise<Category[]> {
   const apiKey = process.env.GROQ_API_KEY
-  if (!apiKey) return detectCategoriesFallback(mood)
+  console.log('[Groq] API key present:', !!apiKey)
+
+  if (!apiKey) {
+    console.warn('[Groq] No API key — using keyword fallback')
+    return detectCategoriesFallback(mood)
+  }
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -52,14 +57,22 @@ export async function detectCategoriesWithAI(mood: string): Promise<Category[]> 
     })
 
     const data = await res.json()
+    console.log('[Groq] full response:', JSON.stringify(data))
+
     const raw = data.choices?.[0]?.message?.content?.trim() ?? '[]'
-// Strip markdown code fences if present
-const text = raw.replace(/```json|```/g, '').trim()
-const parsed = JSON.parse(text) as Category[]
+    console.log('[Groq] raw content:', raw)
+
+    // Strip markdown code fences if present
+    const text = raw.replace(/```json|```/g, '').trim()
+    const parsed = JSON.parse(text) as Category[]
+    console.log('[Groq] parsed:', parsed)
 
     // Validate — only return known categories
     const valid: Category[] = ['romantic','thriller','funny','action','horror','drama','scifi','animation']
-    return parsed.filter((c) => valid.includes(c))
+    const result = parsed.filter((c) => valid.includes(c))
+    console.log('[Groq] final result:', result)
+    return result
+
   } catch (err) {
     console.error('[detectCategoriesWithAI] Groq error, falling back:', err)
     return detectCategoriesFallback(mood)

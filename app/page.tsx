@@ -83,14 +83,18 @@ export default function HomePage() {
       const data = await res.json()
 
       if (!res.ok) throw new Error(data.error)
-      if (data.results.length === 0) {
-        setStatus('no-match')
-        return
-      }
+      if (!data.results || data.results.length === 0) {
+  setStatus('no-match')
+  return
+}
+setResults(data.results)
+setMeta({ total: data.totalMatches, cats: data.detectedCategories })
+setStatus('done')
       setResults(data.results)
       setMeta({ total: data.totalMatches, cats: data.detectedCategories })
       setStatus('done')
-    } catch {
+    } catch (err) {
+      console.error('[handleSubmit error]', err)
       setStatus('error')
     }
   }, [mood, timeLimit])

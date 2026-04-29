@@ -48,12 +48,13 @@ useEffect(() => {
   }
 }
 
-  async function clearData(target: 'searches' | 'all') {
+ async function clearData(target: 'searches' | 'all') {
     setClearing(true)
+    const currentKey = new URLSearchParams(window.location.search).get('key') ?? ''
     await fetch('/api/admin/clear', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret: key, target }),
+      body: JSON.stringify({ secret: currentKey, target }),
     })
     setConfirm(null)
     await fetchStats()

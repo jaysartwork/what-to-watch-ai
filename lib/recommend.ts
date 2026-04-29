@@ -52,8 +52,10 @@ export async function detectCategoriesWithAI(mood: string): Promise<Category[]> 
     })
 
     const data = await res.json()
-    const text = data.choices?.[0]?.message?.content?.trim() ?? '[]'
-    const parsed = JSON.parse(text) as Category[]
+    const raw = data.choices?.[0]?.message?.content?.trim() ?? '[]'
+// Strip markdown code fences if present
+const text = raw.replace(/```json|```/g, '').trim()
+const parsed = JSON.parse(text) as Category[]
 
     // Validate — only return known categories
     const valid: Category[] = ['romantic','thriller','funny','action','horror','drama','scifi','animation']

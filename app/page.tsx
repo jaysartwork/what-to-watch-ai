@@ -102,7 +102,7 @@ export default function HomePage() {
         {/* Header */}
         <div className="text-center mb-10">
           <p className="text-[11px] uppercase tracking-[0.2em] text-zinc-400 mb-2">
-            AI-Powered · Mock MVP
+            AI-Powered · Powered by Groq
           </p>
           <h1 className="text-4xl font-bold tracking-tight mb-2">
             What to <span className="text-amber-500">Watch</span>

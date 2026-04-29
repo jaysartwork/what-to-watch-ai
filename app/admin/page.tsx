@@ -27,12 +27,23 @@ export default function AdminPage() {
     : ''
 
   async function fetchStats() {
-    setLoading(true)
+  setLoading(true)
+  try {
     const res = await fetch(`/api/admin/stats?key=${key}`)
     const data = await res.json()
     setStats(data)
+  } catch (err) {
+    console.error('[admin] fetch error:', err)
+    setStats({ 
+      totalSearches: 0, todaySearches: 0,
+      weekSearches: 0, totalSessions: 0,
+      recentSearches: [], topCategories: [],
+      error: 'Failed to load stats'
+    })
+  } finally {
     setLoading(false)
   }
+}
 
   async function clearData(target: 'searches' | 'all') {
     setClearing(true)

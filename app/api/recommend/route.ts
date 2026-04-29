@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Get recommendations (pure logic — no DB)
-    const response = getRecommendations(mood, timeLimit ?? 999)
+    const response = await getRecommendations(mood, timeLimit ?? 999)
 
     // 2. Log to Supabase for analytics
     const db = createServerClient()

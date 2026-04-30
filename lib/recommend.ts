@@ -14,14 +14,66 @@ const GENRE_MAP: Record<Category, number[]> = {
 
 // ── Keyword fallback ──────────────────────────────────────────
 export const KEYWORD_MAP: Record<Category, string[]> = {
-  romantic:  ['romantic','romance','love','sweet','cute','heartwarming','relationship','couple','date','wedding','cheesy','soft','cozy','mushy'],
-  thriller:  ['thriller','mystery','suspense','twist','dark','crime','investigation','murder','detective','plot','intense','edge','seat','mind'],
-  funny:     ['funny','comedy','laugh','light','humor','fun','entertaining','silly','witty','hilarious','breezy','easy','chill','relax'],
-  action:    ['action','adventure','fight','exciting','intense','hero','epic','explosive','adrenaline','battle','war','fast'],
-  horror:    ['horror','scary','terrifying','dark','creepy','nightmare','ghost','haunting','fear','disturbing','tense','eerie'],
-  drama:     ['drama','serious','emotional','cry','moving','meaningful','deep','real','touching','sad','beautiful','heavy'],
-  scifi:     ['sci-fi','scifi','science','space','future','technology','robot','ai','alien','mind-bending','complex','intelligent','futuristic'],
-  animation: ['anime','animation','cartoon','animated','family','ghibli','kids','colorful','visual','vibrant'],
+  romantic: [
+    'romantic','romance','love','sweet','cute','heartwarming',
+    'relationship','couple','date','wedding','cheesy','soft','cozy','mushy',
+    // Tagalog
+    'kilig','mahal','pag-ibig','sinta','ligaw','kasal','sweet na','inlove',
+    'may gusto','may feelings','torpe','mahangin','hugot'
+  ],
+  thriller: [
+    'thriller','mystery','suspense','twist','dark','crime','investigation',
+    'murder','detective','plot','intense','edge','seat','mind',
+    // Tagalog
+    'nakakatakot na hindi horror','suspenseful','gulat','liko-liko',
+    'hindi mahulaan','nakaka-engganyo','nakaka-curious','mind-blowing'
+  ],
+  funny: [
+    'funny','comedy','laugh','light','humor','fun','entertaining',
+    'silly','witty','hilarious','breezy','easy','chill','relax',
+    // Tagalog
+    'nakakatawa','tawa','aliw','masaya','magaan','pampagana',
+    'pang-araw-araw','walang drama','chill lang'
+  ],
+  action: [
+    'action','adventure','fight','exciting','intense','hero','epic',
+    'explosive','adrenaline','battle','war','fast',
+    // Tagalog
+    'aksyon','laban','giyera','pagtakas','exciting na','paboom',
+    'superhero','panlaban','nakaka-excite'
+  ],
+  horror: [
+    'horror','scary','terrifying','dark','creepy','nightmare','ghost',
+    'haunting','fear','disturbing','tense','eerie',
+    // Tagalog
+    'nakakatakot','multo','kababalaghan','nakakakilig sa takot',
+    'hindi makatulog','nakaka-antok ng takot','suspense horror',
+    'nakakaistorbo','nakakapanindig-balahibo'
+  ],
+  drama: [
+    'drama','serious','emotional','cry','moving','meaningful','deep',
+    'real','touching','sad','beautiful','heavy',
+    // Tagalog
+    'nakakaiyak','malungkot','malalim','nakaka-touch','hugot',
+    'parang totoo','kwento ng buhay','nakaka-relate','sad na',
+    'something that makes me cry','gusto ko umiyak','umiiyak',
+    'nakakaawa','masakit sa puso'
+  ],
+  scifi: [
+    'sci-fi','scifi','science','space','future','technology','robot',
+    'ai','alien','mind-bending','complex','intelligent','futuristic',
+    // Tagalog
+    'hinaharap','teknolohiya','kalawakan','robot na','parang future',
+    'mind-blowing','nakakalito sa magandang paraan','ending na hindi mahulaan',
+    'gusto ko ng mind-blowing ending','nakakalito','twist ending'
+  ],
+  animation: [
+    'anime','animation','cartoon','animated','family','ghibli',
+    'kids','colorful','visual','vibrant',
+    // Tagalog
+    'anime na','kartun','animated na','pampamilya','pangbata',
+    'maganda ang drawing','gawa sa japan','studio ghibli'
+  ],
 }
 
 export function detectCategoriesFallback(mood: string): Category[] {

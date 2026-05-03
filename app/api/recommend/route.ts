@@ -5,10 +5,10 @@ import { createServerClient } from '@/lib/supabase'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { mood, timeLimit, sessionId } = body as {
+    const { mood, timeLimit, name } = body as {
       mood: string
       timeLimit: number
-      sessionId: string
+      name: string              // ← dati: sessionId: string
     }
 
     if (!mood || typeof mood !== 'string') {
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const userAgent = req.headers.get('user-agent') ?? null
 
     // Upsert session via RPC — correctly increments search_count on conflict
-    await db.rpc('upsert_session', { p_session_id: sessionId })
+    await db.rpc('upsert_session', { p_name: name })    // ← dati: p_session_id: sessionId
 
     // Insert search log
     await db.from('searches').insert({
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
       categories_detected: response.detectedCategories,
       time_filter:         timeLimit,
       results_count:       response.results.length,
-      session_id:          sessionId,
+      name:                name,                        // ← dati: session_id: sessionId
       user_agent:          userAgent,
     })
 

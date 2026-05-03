@@ -24,13 +24,13 @@ export interface Movie {
   posterUrl?: string
   year?: number
   tmdbId?: number
-  streamingOn?: StreamingProvider[]   // ← BAGO
+  streamingOn?: StreamingProvider[]
 }
 
 export interface RecommendRequest {
   mood: string
   timeLimit: number
-  sessionId: string
+  name: string              // ← dati: sessionId: string
 }
 
 export interface RecommendResponse {
@@ -46,12 +46,12 @@ export interface SearchLog {
   categories_detected: Category[]
   time_filter: number
   results_count: number
-  session_id: string
+  name: string              // ← dati: session_id: string
   user_agent: string | null
 }
 
 export interface SessionLog {
-  session_id: string
+  name: string              // ← dati: session_id: string
   created_at: string
   last_seen: string
   search_count: number

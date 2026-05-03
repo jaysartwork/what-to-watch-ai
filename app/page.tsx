@@ -5,16 +5,6 @@ import type { Movie, Category } from '@/types'
 import RecommendationCard from '@/components/RecommendationCard'
 import { KEYWORD_MAP } from '@/lib/recommend'
 
-function getSessionId(): string {
-  if (typeof window === 'undefined') return ''
-  let id = localStorage.getItem('wtw_session')
-  if (!id) {
-    id = crypto.randomUUID()
-    localStorage.setItem('wtw_session', id)
-  }
-  return id
-}
-
 const GENRE_CHIPS: { label: string; key: Category }[] = [
   { label: 'Romantic',  key: 'romantic'  },
   { label: 'Thriller',  key: 'thriller'  },
@@ -27,65 +17,28 @@ const GENRE_CHIPS: { label: string; key: Category }[] = [
 ]
 
 const TIME_OPTIONS = [
-  { label: '30 min',   value: 30  },
-  { label: '1 hour',   value: 60  },
-  { label: '2 hours',  value: 120 },
-  { label: 'No limit', value: 999 },
-]
-
-// ── Funny loading messages ─────────────────────────────────────
-const LOADING_MESSAGES = [
-  "Cutting through the Netflix scroll… ✂️",
-  "Asking the algorithm nicely… 🙏",
-  "Ignoring movies you've seen 3 times… 🙈",
-  "Bribing the recommendation gods… 🪙",
-  "Skipping the 'Are you still watching?' screen… ⏭️",
-  "Consulting the council of movie nerds… 🎬",
-  "Filtering out movies with sad dog scenes… 🐶",
-  "Avoiding sequels nobody asked for… 😅",
-  "Finding something your GF and BF will both enjoy… 🤞",
-  "Almost there, promise… ⏳",
-]
-
-// ── Surprise Me prompts ────────────────────────────────────────
-const SURPRISE_PROMPTS = [
-  "I had a long exhausting day and just want to escape",
-  "Gusto ko ng mind-blowing ending na hindi ko mahulaan",
-  "Something that'll make me cry but in a good way",
-  "Date night pero magkaiba kami ng taste namin",
-  "I want to feel motivated and inspired",
-  "Nakakatawa pero hindi pang-bata",
-  "Something creepy but not too scary to sleep after",
-  "I want to feel something deep and meaningful",
-  "Gusto ko ng action pero may magandang kwento",
-  "Something I can watch with my family",
-  "A hidden gem most people haven't seen",
-  "Gusto ko umiyak — bigyan mo ako ng hugot",
+  { label: '30 min',  value: 30  },
+  { label: '1 hour',  value: 60  },
+  { label: '2 hours', value: 120 },
+  { label: 'No limit',value: 999 },
 ]
 
 type Status = 'idle' | 'loading' | 'done' | 'error' | 'no-match'
 
 export default function HomePage() {
+  const [name, setName]           = useState('')
   const [mood, setMood]           = useState('')
   const [timeLimit, setTimeLimit] = useState(120)
   const [activeChips, setActiveChips] = useState<Set<Category>>(new Set())
   const [status, setStatus]       = useState<Status>('idle')
   const [results, setResults]     = useState<Movie[]>([])
   const [meta, setMeta]           = useState({ total: 0, cats: [] as Category[] })
-  const [loadingMsg, setLoadingMsg] = useState(LOADING_MESSAGES[0])
 
-  // Rotate loading messages every 2 seconds
-  useEffect(() => {
-    if (status !== 'loading') return
-    let i = 0
-    const interval = setInterval(() => {
-      i = (i + 1) % LOADING_MESSAGES.length
-      setLoadingMsg(LOADING_MESSAGES[i])
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [status])
+  const updateMoodFromChips = (chips: Set<Category>) => {
+    const labels = GENRE_CHIPS.filter((c) => chips.has(c.key)).map((c) => c.label)
+    if (labels.length > 0) setMood(labels.join(', '))
+  }
 
-  // Sync mood text → highlight matching chips
   useEffect(() => {
     const lower = mood.toLowerCase()
     const newActive = new Set<Category>()
@@ -94,11 +47,6 @@ export default function HomePage() {
     }
     setActiveChips(newActive)
   }, [mood])
-
-  const updateMoodFromChips = (chips: Set<Category>) => {
-    const labels = GENRE_CHIPS.filter((c) => chips.has(c.key)).map((c) => c.label)
-    if (labels.length > 0) setMood(labels.join(', '))
-  }
 
   const toggleChip = (key: Category) => {
     setActiveChips((prev) => {
@@ -109,23 +57,20 @@ export default function HomePage() {
     })
   }
 
-  // Surprise Me — pick a random prompt
-  const handleSurprise = () => {
-    const random = SURPRISE_PROMPTS[Math.floor(Math.random() * SURPRISE_PROMPTS.length)]
-    setMood(random)
-  }
-
   const handleSubmit = useCallback(async () => {
     if (!mood.trim()) return
     setStatus('loading')
     setResults([])
-    setLoadingMsg(LOADING_MESSAGES[0])
 
     try {
       const res = await fetch('/api/recommend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mood, timeLimit, sessionId: getSessionId() }),
+        body: JSON.stringify({
+          mood,
+          timeLimit,
+          name: name.trim() || 'Anonymous',   // ← name na, hindi na sessionId
+        }),
       })
       const data = await res.json()
 
@@ -141,7 +86,7 @@ export default function HomePage() {
       console.error('[handleSubmit error]', err)
       setStatus('error')
     }
-  }, [mood, timeLimit])
+  }, [mood, timeLimit, name])
 
   return (
     <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-white">
@@ -160,20 +105,27 @@ export default function HomePage() {
           </p>
         </div>
 
+        {/* Name Input */}
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-5 mb-3">
+          <label className="block text-[11px] uppercase tracking-[0.12em] text-zinc-400 mb-2">
+            What's your name? (optional)
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+            placeholder="e.g. Juan, Maria…"
+            className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-[14px] placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-400 transition"
+            maxLength={50}
+          />
+        </div>
+
         {/* Mood Input */}
         <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-5 mb-3">
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-[11px] uppercase tracking-[0.12em] text-zinc-400">
-              How are you feeling right now?
-            </label>
-            {/* ── Surprise Me Button ── */}
-            <button
-              onClick={handleSurprise}
-              className="text-[11px] px-2.5 py-1 rounded-full border border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all"
-            >
-              🎲 Surprise me
-            </button>
-          </div>
+          <label className="block text-[11px] uppercase tracking-[0.12em] text-zinc-400 mb-2">
+            How are you feeling right now?
+          </label>
           <input
             type="text"
             value={mood}
@@ -232,11 +184,11 @@ export default function HomePage() {
           {status === 'loading' ? 'Finding your watch…' : 'Find My Watch →'}
         </button>
 
-        {/* ── Loading State with funny messages ── */}
+        {/* Results */}
         {status === 'loading' && (
           <div className="text-center py-8">
             <div className="inline-block w-6 h-6 border-2 border-zinc-200 border-t-amber-500 rounded-full animate-spin mb-3" />
-            <p className="text-zinc-400 text-sm transition-all duration-500">{loadingMsg}</p>
+            <p className="text-zinc-400 text-sm">Scanning our catalog…</p>
           </div>
         )}
 
@@ -256,7 +208,9 @@ export default function HomePage() {
         {status === 'done' && results.length > 0 && (
           <div>
             <div className="flex items-baseline justify-between mb-4">
-              <h2 className="font-semibold text-[16px]">Top picks for you</h2>
+              <h2 className="font-semibold text-[16px]">
+                Top picks for you{name.trim() ? `, ${name.trim()}` : ''}
+              </h2>
               <span className="text-[12px] text-zinc-400">
                 {results.length} of {meta.total} matches · {meta.cats.join(', ')}
               </span>
@@ -267,7 +221,7 @@ export default function HomePage() {
               ))}
             </div>
             <p className="text-center text-[11px] text-zinc-400 mt-6">
-              Results powered by TMDB · What to Watch AI
+              Results powered by GROQ · Phase 1 MVP
             </p>
           </div>
         )}

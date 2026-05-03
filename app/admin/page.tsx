@@ -1,6 +1,5 @@
 // app/admin/page.tsx — Server Component
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase'
 import type { SearchLog } from '@/types'
 import ClearDataButtons from '@/components/ClearDataButtons'
@@ -30,7 +29,7 @@ async function getStats() {
       db.from('searches').select('*', { count: 'exact', head: true }).gte('created_at', weekStart),
       db.from('sessions').select('*', { count: 'exact', head: true }),
       db.from('searches')
-        .select('id, mood_input, categories_detected, results_count, created_at, session_id')
+        .select('id, mood_input, categories_detected, results_count, created_at, name, time_filter, user_agent') // ← dati: session_id
         .order('created_at', { ascending: false }).limit(20),
       db.from('searches').select('categories_detected'),
     ])
@@ -88,7 +87,7 @@ export default async function AdminPage({
             { label: 'Total searches',  value: stats.totalSearches  },
             { label: 'Searches today',  value: stats.todaySearches  },
             { label: 'This week',       value: stats.weekSearches   },
-            { label: 'Unique sessions', value: stats.totalSessions  },
+            { label: 'Unique names',    value: stats.totalSessions  }, // ← dati: Unique sessions
           ].map(({ label, value }) => (
             <div key={label} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
               <p className="text-zinc-500 text-[12px] uppercase tracking-wide mb-1">{label}</p>
@@ -133,7 +132,7 @@ export default async function AdminPage({
                     <th className="pb-2 font-medium pr-4">Mood input</th>
                     <th className="pb-2 font-medium pr-4">Categories</th>
                     <th className="pb-2 font-medium pr-4">Results</th>
-                    <th className="pb-2 font-medium">Session</th>
+                    <th className="pb-2 font-medium">Name</th>  {/* ← dati: Session */}
                   </tr>
                 </thead>
                 <tbody>
@@ -154,13 +153,8 @@ export default async function AdminPage({
                         </div>
                       </td>
                       <td className="py-2.5 pr-4 text-zinc-400">{s.results_count}</td>
-                      <td className="py-2.5">
-                        <Link
-                          href={`/admin/session/${s.session_id}?key=${key}`}
-                          className="text-zinc-500 font-mono text-[11px] hover:text-amber-400 transition-colors underline underline-offset-2"
-                        >
-                          {s.session_id?.slice(0, 8)}…
-                        </Link>
+                      <td className="py-2.5 text-zinc-300 font-medium">
+                        {s.name}  {/* ← dati: Link to session page using s.session_id */}
                       </td>
                     </tr>
                   ))}

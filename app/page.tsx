@@ -26,7 +26,6 @@ const TIME_OPTIONS = [
 type Status = 'idle' | 'loading' | 'done' | 'error' | 'no-match'
 
 export default function HomePage() {
-  const [name, setName]           = useState('')
   const [mood, setMood]           = useState('')
   const [timeLimit, setTimeLimit] = useState(120)
   const [activeChips, setActiveChips] = useState<Set<Category>>(new Set())
@@ -69,7 +68,7 @@ export default function HomePage() {
         body: JSON.stringify({
           mood,
           timeLimit,
-          name: name.trim() || 'Anonymous',   // ← name na, hindi na sessionId
+          name: 'Anonymous',
         }),
       })
       const data = await res.json()
@@ -86,7 +85,7 @@ export default function HomePage() {
       console.error('[handleSubmit error]', err)
       setStatus('error')
     }
-  }, [mood, timeLimit, name])
+  }, [mood, timeLimit])
 
   return (
     <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-white">
@@ -103,22 +102,6 @@ export default function HomePage() {
           <p className="text-zinc-500 text-[15px]">
             Tell us your mood. We'll cut through the scroll.
           </p>
-        </div>
-
-        {/* Name Input */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-5 mb-3">
-          <label className="block text-[11px] uppercase tracking-[0.12em] text-zinc-400 mb-2">
-            What's your name? (optional)
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-            placeholder="e.g. Juan, Maria…"
-            className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-[14px] placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-400 transition"
-            maxLength={50}
-          />
         </div>
 
         {/* Mood Input */}
@@ -208,9 +191,7 @@ export default function HomePage() {
         {status === 'done' && results.length > 0 && (
           <div>
             <div className="flex items-baseline justify-between mb-4">
-              <h2 className="font-semibold text-[16px]">
-                Top picks for you{name.trim() ? `, ${name.trim()}` : ''}
-              </h2>
+              <h2 className="font-semibold text-[16px]">Top picks for you</h2>
               <span className="text-[12px] text-zinc-400">
                 {results.length} of {meta.total} matches · {meta.cats.join(', ')}
               </span>

@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       db.from('searches').select('*', { count: 'exact', head: true }).gte('created_at', weekStart),
       db.from('sessions').select('*', { count: 'exact', head: true }),
       db.from('searches')
-        .select('id, mood_input, categories_detected, results_count, created_at, session_id')
+        .select('id, mood_input, categories_detected, results_count, created_at, time_filter, name, user_agent')
         .order('created_at', { ascending: false })
         .limit(20),
       db.from('searches').select('categories_detected'),

@@ -23,15 +23,36 @@ const TIME_OPTIONS = [
   { label: 'No limit',value: 999 },
 ]
 
+// Generate or retrieve a persistent user ID from localStorage
+function getUserId(): string {
+  const KEY = 'wtw_uid'
+  try {
+    const existing = localStorage.getItem(KEY)
+    if (existing) return existing
+    const newId = 'user_' + Math.random().toString(36).slice(2, 8)
+    localStorage.setItem(KEY, newId)
+    return newId
+  } catch {
+    // localStorage blocked (e.g. private browsing with strict settings)
+    return 'user_' + Math.random().toString(36).slice(2, 8)
+  }
+}
+
 type Status = 'idle' | 'loading' | 'done' | 'error' | 'no-match'
 
 export default function HomePage() {
+  const [userId, setUserId]       = useState<string>('')
   const [mood, setMood]           = useState('')
   const [timeLimit, setTimeLimit] = useState(120)
   const [activeChips, setActiveChips] = useState<Set<Category>>(new Set())
   const [status, setStatus]       = useState<Status>('idle')
   const [results, setResults]     = useState<Movie[]>([])
   const [meta, setMeta]           = useState({ total: 0, cats: [] as Category[] })
+
+  // Runs only on client after mount — avoids SSR mismatch
+  useEffect(() => {
+    setUserId(getUserId())
+  }, [])
 
   const updateMoodFromChips = (chips: Set<Category>) => {
     const labels = GENRE_CHIPS.filter((c) => chips.has(c.key)).map((c) => c.label)
@@ -68,7 +89,7 @@ export default function HomePage() {
         body: JSON.stringify({
           mood,
           timeLimit,
-          name: 'Anonymous',
+          name: userId || 'Anonymous',  // ← persistent ID from localStorage
         }),
       })
       const data = await res.json()
@@ -85,7 +106,7 @@ export default function HomePage() {
       console.error('[handleSubmit error]', err)
       setStatus('error')
     }
-  }, [mood, timeLimit])
+  }, [mood, timeLimit, userId])
 
   return (
     <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-white">

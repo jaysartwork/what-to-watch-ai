@@ -139,10 +139,12 @@ export default async function AdminPage({
                   {stats.recentSearches.map((s) => (
                     <tr key={s.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
                       <td className="py-2.5 pr-4 text-zinc-500 whitespace-nowrap">
-                        {new Date(s.created_at).toLocaleString('en-PH', {
-                          month: 'short', day: 'numeric',
-                          hour: '2-digit', minute: '2-digit',
-                        })}
+                        // BAGO
+{new Date(s.created_at).toLocaleString('en-PH', {
+  month: 'short', day: 'numeric',
+  hour: '2-digit', minute: '2-digit',
+  timeZone: 'Asia/Manila',
+})}
                       </td>
                       <td className="py-2.5 pr-4 text-zinc-300 max-w-[200px] truncate">{s.mood_input}</td>
                       <td className="py-2.5 pr-4">
